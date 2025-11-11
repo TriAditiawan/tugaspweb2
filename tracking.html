@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SITTA — Tracking DO</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/vue@3"></script>
+</head>
+<body>
+  
+  <header class="topbar">
+    <div class="container flex-between">
+      <div class="brand">SITTA</div>
+      <nav class="menu">
+        <a href="index.html" class="navlink ">Dashboard</a>
+        <a href="stok.html" class="navlink ">Informasi Bahan Ajar</a>
+        <a href="tracking.html" class="navlink active">Lacak Bahan Ajar</a>
+      </nav>
+    </div>
+  </header>
+
+
+  <main id="app" class="container" v-cloak>
+    <section class="card">
+      <h2>Buat DO Baru</h2>
+      <form @submit.prevent="buatDOBaru">
+        <div class="grid grid-3 gap">
+          <div>
+            <label>Nomor DO</label>
+            <input :value="calculatedNextDO" disabled>
+            <small class="muted">Terbentuk otomatis: DO{ { yearNow } }-xxx</small>
+          </div>
+          <div>
+            <label>NIM</label>
+            <input v-model.trim="form.nim" required placeholder="NIM"/>
+            <small v-if="errors.nim" class="error">{{ errors.nim }}</small>
+          </div>
+          <div>
+            <label>Nama</label>
+            <input v-model.trim="form.nama" required placeholder="Nama"/>
+            <small v-if="errors.nama" class="error">{{ errors.nama }}</small>
+          </div>
+          <div>
+            <label>Ekspedisi</label>
+            <select v-model="form.ekspedisi" required>
+              <option value="">— pilih —</option>
+              <option v-for="p in pengirimanList" :key="p.kode" :value="p.nama">{{ p.nama }}</option>
+            </select>
+            <small v-if="errors.ekspedisi" class="error">{{ errors.ekspedisi }}</small>
+          </div>
+          <div>
+            <label>Paket Bahan Ajar</label>
+            <select v-model="form.paket" required>
+              <option value="">— pilih paket —</option>
+              <option v-for="p in paket" :key="p.kode" :value="p.kode">{{ p.kode }} — {{ p.nama }}</option>
+            </select>
+            <small v-if="errors.paket" class="error">{{ errors.paket }}</small>
+          </div>
+          <div>
+            <label>Tanggal Kirim</label>
+            <input type="date" v-model="form.tanggalKirim" required>
+          </div>
+        </div>
+        <div v-if="paketTerpilih" class="info">
+          <strong>Isi Paket:</strong>
+          <ul class="inline">
+            <li v-for="kode in paketTerpilih.isi" :key="kode"><code>{{ kode }}</code></li>
+          </ul>
+          <div>Total Harga: <strong>Rp {{ formatIDR(paketTerpilih.harga) }}</strong></div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Buat DO</button>
+          <button type="button" class="btn secondary" @click="resetForm">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Daftar Tracking DO</h2>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nomor DO</th>
+              <th>NIM</th>
+              <th>Nama</th>
+              <th>Status</th>
+              <th>Ekspedisi</th>
+              <th>Tanggal Kirim</th>
+              <th>Paket</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(v, k) in tracking" :key="k">
+              <td>{{ k }}</td>
+              <td>{{ v.nim }}</td>
+              <td>{{ v.nama }}</td>
+              <td><span class="badge info">{{ v.status }}</span></td>
+              <td>{{ v.ekspedisi }}</td>
+              <td>{{ v.tanggalKirim }}</td>
+              <td>{{ v.paket }}</td>
+              <td>Rp {{ formatIDR(v.total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details class="mt">
+        <summary>Lihat Rincian Perjalanan (semua DO)</summary>
+        <div class="stack-2 mt">
+          <div class="card subtle" v-for="(v, k) in tracking" :key="'detail-'+k">
+            <h3>{{ k }} — {{ v.nama }}</h3>
+            <ul class="timeline">
+              <li v-for="(p, idx) in v.perjalanan" :key="idx">
+                <span class="time">{{ p.waktu }}</span>
+                <span>{{ p.keterangan }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="container muted">© 2025 — Demo tugas2-vue-ut</footer>
+  <script src="js/tracking-app.js"></script>
+</body>
+</html>

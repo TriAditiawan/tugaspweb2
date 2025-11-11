@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SITTA — Stok Bahan Ajar</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/vue@3"></script>
+</head>
+<body>
+  
+  <header class="topbar">
+    <div class="container flex-between">
+      <div class="brand">SITTA</div>
+      <nav class="menu">
+        <a href="index.html" class="navlink ">Dashboard</a>
+        <a href="stok.html" class="navlink active">Informasi Bahan Ajar</a>
+        <a href="tracking.html" class="navlink ">Lacak Bahan Ajar</a>
+      </nav>
+    </div>
+  </header>
+
+
+  <main id="app" class="container" v-cloak>
+    <section class="card">
+      <h2>Filter & Sort</h2>
+      <div class="grid grid-4 gap">
+        <div>
+          <label>UT-Daerah (UPBJJ)</label>
+          <select v-model="filters.upbjj">
+            <option value="">— semua —</option>
+            <option v-for="u in upbjjList" :key="u" :value="u">{{ u }}</option>
+          </select>
+        </div>
+        <div>
+          <label>Kategori</label>
+          <select v-model="filters.kategori" :disabled="!filters.upbjj">
+            <option value="">— semua —</option>
+            <option v-for="k in kategoriList" :key="k" :value="k">{{ k }}</option>
+          </select>
+          <small v-if="!filters.upbjj" class="muted">Pilih UT-Daerah dulu</small>
+        </div>
+        <div>
+          <label>Filter Stok</label>
+          <div class="stack-2">
+            <label><input type="checkbox" v-model="filters.onlyBelowSafety"> Qty &lt; Safety</label>
+            <label><input type="checkbox" v-model="filters.onlyZero"> Qty = 0</label>
+          </div>
+        </div>
+        <div>
+          <label>Urutkan</label>
+          <select v-model="sort.by">
+            <option value="judul">Judul</option>
+            <option value="qty">Stok</option>
+            <option value="harga">Harga</option>
+          </select>
+          <label class="inline"><input type="checkbox" v-model="sort.desc"> Desc</label>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" @click="resetFilters">Reset Filter</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Daftar Stok</h2>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Judul</th>
+              <th>Kategori</th>
+              <th>UPBJJ</th>
+              <th>Lokasi Rak</th>
+              <th class="num">Harga</th>
+              <th class="num">Qty</th>
+              <th class="num">Safety</th>
+              <th>Status</th>
+              <th>Catatan</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(s, i) in filteredSortedStok" :key="s.kode">
+              <td>{{ s.kode }}</td>
+              <td>
+                <div v-if="editIndex !== i">{{ s.judul }}</div>
+                <input v-else v-model="editBuffer.judul" />
+              </td>
+              <td>
+                <div v-if="editIndex !== i">{{ s.kategori }}</div>
+                <select v-else v-model="editBuffer.kategori">
+                  <option v-for="k in kategoriList" :key="k" :value="k">{{ k }}</option>
+                </select>
+              </td>
+              <td>
+                <div v-if="editIndex !== i">{{ s.upbjj }}</div>
+                <select v-else v-model="editBuffer.upbjj">
+                  <option v-for="u in upbjjList" :key="u" :value="u">{{ u }}</option>
+                </select>
+              </td>
+              <td>
+                <div v-if="editIndex !== i">{{ s.lokasiRak }}</div>
+                <input v-else v-model="editBuffer.lokasiRak" />
+              </td>
+              <td class="num">
+                <div v-if="editIndex !== i">Rp {{ formatIDR(s.harga) }}</div>
+                <input v-else type="number" v-model.number="editBuffer.harga" min="0"/>
+              </td>
+              <td class="num">
+                <div v-if="editIndex !== i">{{ s.qty }}</div>
+                <input v-else type="number" v-model.number="editBuffer.qty" min="0"/>
+              </td>
+              <td class="num">
+                <div v-if="editIndex !== i">{{ s.safety }}</div>
+                <input v-else type="number" v-model.number="editBuffer.safety" min="0"/>
+              </td>
+              <td>
+                <span :class="['badge', statusClass(s)]">{{ statusText(s) }}</span>
+              </td>
+              <td><span v-html="s.catatanHTML"></span></td>
+              <td class="nowrap">
+                <button v-if="editIndex !== i" class="btn small" @click="startEdit(i, s)">Edit</button>
+                <div v-else class="stack-2">
+                  <button class="btn small" @click="saveEdit(i)">Simpan</button>
+                  <button class="btn small danger" @click="cancelEdit">Batal</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Tambah Bahan Ajar</h2>
+      <form @submit.prevent="tambahBaru">
+        <div class="grid grid-4 gap">
+          <div>
+            <label>Kode</label>
+            <input v-model.trim="form.kode" required placeholder="EKMA4116"/>
+            <small v-if="errors.kode" class="error">{{ errors.kode }}</small>
+          </div>
+          <div>
+            <label>Judul</label>
+            <input v-model.trim="form.judul" required/>
+            <small v-if="errors.judul" class="error">{{ errors.judul }}</small>
+          </div>
+          <div>
+            <label>Kategori</label>
+            <select v-model="form.kategori" required>
+              <option value="">— pilih —</option>
+              <option v-for="k in kategoriList" :key="k" :value="k">{{ k }}</option>
+            </select>
+            <small v-if="errors.kategori" class="error">{{ errors.kategori }}</small>
+          </div>
+          <div>
+            <label>UPBJJ</label>
+            <select v-model="form.upbjj" required>
+              <option value="">— pilih —</option>
+              <option v-for="u in upbjjList" :key="u" :value="u">{{ u }}</option>
+            </select>
+            <small v-if="errors.upbjj" class="error">{{ errors.upbjj }}</small>
+          </div>
+          <div>
+            <label>Lokasi Rak</label>
+            <input v-model.trim="form.lokasiRak" placeholder="R1-A1"/>
+          </div>
+          <div>
+            <label>Harga</label>
+            <input type="number" v-model.number="form.harga" min="0"/>
+            <small v-if="errors.harga" class="error">{{ errors.harga }}</small>
+          </div>
+          <div>
+            <label>Qty</label>
+            <input type="number" v-model.number="form.qty" min="0"/>
+          </div>
+          <div>
+            <label>Safety</label>
+            <input type="number" v-model.number="form.safety" min="0"/>
+          </div>
+          <div class="col-span-4">
+            <label>Catatan (HTML)</label>
+            <textarea v-model="form.catatanHTML" rows="2" placeholder="<em>Edisi 2024</em>"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" type="submit">Tambah</button>
+          <button class="btn secondary" type="button" @click="resetForm">Reset</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="container muted">© 2025 — Demo tugas2-vue-ut</footer>
+
+  <script src="js/stok-app.js"></script>
+</body>
+</html>
